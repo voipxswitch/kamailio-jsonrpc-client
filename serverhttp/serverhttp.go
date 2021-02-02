@@ -31,14 +31,15 @@ func ListenAndServe(root *goji.Mux, listenAddr string, client client.API) error 
 	v.HandleFunc(pat.Post("/uac/register"), h.register)
 	// POST /v1/uac/unregister?domain=test.com&username=1000  returns 200
 	v.HandleFunc(pat.Post("/uac/unregister"), h.unregister)
-	// POST /v1/uac/list?domain=test.com&username=1000 returns 200
-	v.HandleFunc(pat.Post("/uac/list"), h.list)
+	// GET /v1/uac/list?domain=test.com&username=1000 returns 200
+	v.HandleFunc(pat.Get("/uac/list"), h.list)
 	return http.ListenAndServe(listenAddr, root)
 }
 
 func (h httpHandler) register(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	type request struct {
+		UUID         string `json:"uuid"`
 		Username     string `json:"username"`
 		Domain       string `json:"domain"`
 		AuthUsername string `json:"auth_username"`
@@ -53,6 +54,7 @@ func (h httpHandler) register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	err = h.client.Register(ctx, client.UACAddRequest{
+		UUID:         z.UUID,
 		Username:     z.Username,
 		Domain:       z.Domain,
 		AuthUsername: z.AuthUsername,
@@ -76,6 +78,11 @@ func (h httpHandler) unregister(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode("bad request")
 		return
 	}
+	uuid := ""
+	requestUUID := r.Form["uuid"]
+	if len(requestUUID) != 0 {
+		uuid = requestUUID[0]
+	}
 	username := r.Form["username"]
 	domain := r.Form["domain"]
 	if len(username) == 0 {
@@ -88,7 +95,7 @@ func (h httpHandler) unregister(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode("missing domain")
 		return
 	}
-	err = h.client.Unregister(ctx, username[0], domain[0])
+	err = h.client.Unregister(ctx, uuid, username[0], domain[0])
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

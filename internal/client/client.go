@@ -26,6 +26,7 @@ type User struct {
 
 // UACAddRequest is exported
 type UACAddRequest struct {
+	UUID         string
 	Username     string
 	Domain       string
 	AuthUsername string
@@ -53,8 +54,12 @@ func generateUUID(key string) uuid.UUID {
 
 // Register fires register request to kamailio
 func (p *API) Register(ctx context.Context, x UACAddRequest) error {
-	id := generateUUID(fmt.Sprintf("%s@%s", x.Username, x.Domain))
-	err := p.uacAdd(ctx, id.String(), x.Username, x.Domain, x.AuthUsername, x.AuthPassword, x.AuthProxy, 60, x.RandomDelay)
+	if x.UUID == "" {
+		id := generateUUID(fmt.Sprintf("%s@%s", x.Username, x.Domain))
+		x.UUID = id.String()
+	}
+
+	err := p.uacAdd(ctx, x.UUID, x.Username, x.Domain, x.AuthUsername, x.AuthPassword, x.AuthProxy, 60, x.RandomDelay)
 	if err != nil {
 		return err
 	}
@@ -62,9 +67,12 @@ func (p *API) Register(ctx context.Context, x UACAddRequest) error {
 }
 
 // Unregister fires unregister request to kamailio
-func (p *API) Unregister(ctx context.Context, username string, domain string) error {
-	id := generateUUID(fmt.Sprintf("%s@%s", username, domain))
-	err := p.uacRemove(ctx, id.String())
+func (p *API) Unregister(ctx context.Context, uuid string, username string, domain string) error {
+	if uuid == "" {
+		id := generateUUID(fmt.Sprintf("%s@%s", username, domain))
+		uuid = id.String()
+	}
+	err := p.uacRemove(ctx, uuid)
 	if err != nil {
 		return err
 	}
