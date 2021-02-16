@@ -9,7 +9,6 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
-	"github.com/romana/rlog"
 	"go.uber.org/zap"
 )
 
@@ -35,7 +34,7 @@ type UACAddRequest struct {
 
 func (a *API) uaclist(ctx context.Context) []User {
 	x := []User{}
-	rlog.Debugf("running uac.reg_dump")
+	a.logger.Debug("running uac.reg_dump")
 
 	type request struct {
 		JSONRPC string `json:"jsonrpc"`
@@ -50,17 +49,17 @@ func (a *API) uaclist(ctx context.Context) []User {
 	}
 	b, err := json.Marshal(&r)
 	if err != nil {
-		rlog.Errorf("could not marshal [%s]", err.Error())
+		a.logger.Error("could not marshal", zap.Error(err))
 		return x
 	}
 	res, err := a.httpClient.Post(a.jsonrpcHTTPAddr, "application/json", bytes.NewBuffer(b))
 	if err != nil {
-		rlog.Errorf("could not http post [%s]", err.Error())
+		a.logger.Error("could not http post", zap.Error(err))
 		return x
 	}
 	c, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		rlog.Errorf("could not read result body [%s]", err.Error())
+		a.logger.Error("could not read result body", zap.Error(err))
 		return x
 	}
 	defer res.Body.Close()
@@ -86,7 +85,7 @@ func (a *API) uaclist(ctx context.Context) []User {
 	}
 	z := response{}
 	if err = json.Unmarshal(c, &z); err != nil {
-		rlog.Errorf("could not unmarshal [%s]", err.Error())
+		a.logger.Error("could not unmarshal", zap.Error(err))
 		return x
 	}
 	for _, v := range z.Result {
@@ -96,7 +95,7 @@ func (a *API) uaclist(ctx context.Context) []User {
 		} else if v.Flags == 16 {
 			j.RegStatus = "trying"
 		} else {
-			rlog.Infof("unmatched flag [%d] for user [%s@%s]", v.Flags, v.LUsername, v.LDomain)
+			a.logger.Info("unmatched flag", zap.Int("Flags", v.Flags), zap.String("LUsername", v.LUsername), zap.String("LDomain", v.LDomain))
 		}
 		x = append(x, j)
 	}
@@ -104,7 +103,6 @@ func (a *API) uaclist(ctx context.Context) []User {
 }
 
 func (a *API) uacRemove(ctx context.Context, id string) error {
-	rlog.Debugf("removing registation with uuid [%s]", id)
 	type params struct {
 		UUID string `json:"l_uuid"`
 	}
@@ -145,7 +143,6 @@ func (a *API) uacRemove(ctx context.Context, id string) error {
 }
 
 func (a *API) uacAdd(ctx context.Context, id string, username string, domain string, authUsername string, authPassword string, authProxy string, expires int, regDelay int) error {
-	rlog.Debugf("adding registation with uuid [%s]", id)
 	type params struct {
 		UUID         string `json:"l_uuid"`
 		Username     string `json:"l_username"`
