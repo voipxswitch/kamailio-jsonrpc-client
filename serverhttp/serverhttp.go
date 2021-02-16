@@ -112,34 +112,24 @@ func (h httpHandler) list(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode("bad request")
 		return
 	}
-	domain := r.Form["domain"]
-	if len(domain) == 0 {
+	domain, ok := r.URL.Query()["domain"]
+	if !ok || domain[0] == "" {
 		x := h.client.ListRegistrations(ctx)
-		if len(x) == 0 {
-			w.WriteHeader(http.StatusNoContent)
-			json.NewEncoder(w).Encode("no registrations")
-			return
-		}
 		json.NewEncoder(w).Encode(x)
 		return
 	}
-	username := r.Form["username"]
-	if len(username) == 0 {
+	username, ok := r.URL.Query()["username"]
+	if !ok || username[0] == "" {
 		x := h.client.ListRegistrationsByDomain(ctx, domain[0])
-		if len(x) == 0 {
-			w.WriteHeader(http.StatusNoContent)
-			json.NewEncoder(w).Encode("no registrations")
-			return
-		}
 		json.NewEncoder(w).Encode(x)
 		return
 	}
-	x := h.client.ListRegistrationsByUsername(ctx, username[0], domain[0])
-	if len(x) == 0 {
-		w.WriteHeader(http.StatusNoContent)
-		json.NewEncoder(w).Encode("no registrations")
-		return
+	id := ""
+	uuid, ok := r.URL.Query()["uuid"]
+	if ok && uuid[0] != "" {
+		id = uuid[0]
 	}
+	x := h.client.ListRegistrationsByUsername(ctx, id, username[0], domain[0])
 	json.NewEncoder(w).Encode(x)
 	return
 }

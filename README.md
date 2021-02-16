@@ -12,17 +12,17 @@ curl -X POST 'http://localhost:8080/v1/uac/unregister?domain=testdomain&username
 
 ### uac list by all
 ```
-curl -X POST http://localhost:8080/v1/uac/list
+curl http://localhost:8080/v1/uac/list
 ```
 
 ### uac list by domain
 ```
-curl -X POST http://localhost:8080/v1/uac/list?domain=testdomain
+curl 'http://localhost:8080/v1/uac/list?domain=testdomain'
 ```
 
 ### uac list by user
 ```
-curl -X POST 'http://localhost:8080/v1/uac/list?domain=testdomain&username=test123'
+curl 'http://localhost:8080/v1/uac/list?domain=testdomain&username=test123'
 ```
 
 ### kamailio config

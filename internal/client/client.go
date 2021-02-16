@@ -99,12 +99,14 @@ func (p *API) ListRegistrationsByDomain(ctx context.Context, domain string) []Us
 }
 
 // ListRegistrationsByUsername list registrations filtered by username
-func (p *API) ListRegistrationsByUsername(ctx context.Context, username string, domain string) []User {
-	id := generateUUID(fmt.Sprintf("%s@%s", username, domain))
+func (p *API) ListRegistrationsByUsername(ctx context.Context, id string, username string, domain string) []User {
+	if id == "" {
+		id = generateUUID(fmt.Sprintf("%s@%s", username, domain)).String()
+	}
 	r := []User{}
 	x := p.uaclist(ctx)
 	for _, v := range x {
-		if v.UUID != id.String() {
+		if v.UUID != id {
 			continue
 		}
 		r = append(r, v)
