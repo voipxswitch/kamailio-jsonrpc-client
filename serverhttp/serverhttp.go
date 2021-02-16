@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/voipxswitch/kamailio-jsonrpc-client/internal/client"
+	"github.com/voipxswitch/kamailio-jsonrpc-client/internal/jsonrpcc"
 	"goji.io"
 	"goji.io/pat"
 )
@@ -15,16 +15,17 @@ const (
 
 type httpHandler struct {
 	listenAddr string
-	client     client.API
+	jsonrpcAPI jsonrpcc.API
 }
 
 // ListenAndServe sets up a new http server
-func ListenAndServe(root *goji.Mux, listenAddr string, client client.API) error {
+func ListenAndServe(listenAddr string, jsonrpcAPI jsonrpcc.API) error {
+	root := goji.NewMux()
 	// setup http mux
 	v := goji.SubMux()
 	h := httpHandler{
 		listenAddr: listenAddr,
-		client:     client,
+		jsonrpcAPI: jsonrpcAPI,
 	}
 	root.Handle(pat.New(requestPath), v)
 	// POST /v1/uac/register returns 200
@@ -53,7 +54,7 @@ func (h httpHandler) register(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	err = h.client.Register(ctx, client.UACAddRequest{
+	err = h.jsonrpcAPI.Register(ctx, jsonrpcc.UACAddRequest{
 		UUID:         z.UUID,
 		Username:     z.Username,
 		Domain:       z.Domain,
@@ -95,7 +96,7 @@ func (h httpHandler) unregister(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode("missing domain")
 		return
 	}
-	err = h.client.Unregister(ctx, uuid, username[0], domain[0])
+	err = h.jsonrpcAPI.Unregister(ctx, uuid, username[0], domain[0])
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -114,13 +115,13 @@ func (h httpHandler) list(w http.ResponseWriter, r *http.Request) {
 	}
 	domain, ok := r.URL.Query()["domain"]
 	if !ok || domain[0] == "" {
-		x := h.client.ListRegistrations(ctx)
+		x := h.jsonrpcAPI.ListRegistrations(ctx)
 		json.NewEncoder(w).Encode(x)
 		return
 	}
 	username, ok := r.URL.Query()["username"]
 	if !ok || username[0] == "" {
-		x := h.client.ListRegistrationsByDomain(ctx, domain[0])
+		x := h.jsonrpcAPI.ListRegistrationsByDomain(ctx, domain[0])
 		json.NewEncoder(w).Encode(x)
 		return
 	}
@@ -129,7 +130,7 @@ func (h httpHandler) list(w http.ResponseWriter, r *http.Request) {
 	if ok && uuid[0] != "" {
 		id = uuid[0]
 	}
-	x := h.client.ListRegistrationsByUsername(ctx, id, username[0], domain[0])
+	x := h.jsonrpcAPI.ListRegistrationsByUsername(ctx, id, username[0], domain[0])
 	json.NewEncoder(w).Encode(x)
 	return
 }

@@ -1,4 +1,4 @@
-package client
+package jsonrpcc
 
 import (
 	"bytes"
@@ -6,24 +6,34 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 
 	"github.com/google/uuid"
 	"github.com/romana/rlog"
+	"go.uber.org/zap"
 )
 
-type jsonRPCError struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
+// User is exported
+type User struct {
+	UUID      string `json:"uuid"`
+	Username  string `json:"username"`
+	Domain    string `json:"domain"`
+	Expires   int    `json:"expires"`
+	RegStatus string `json:"registration_status"`
 }
 
-func handleError(e jsonRPCError) error {
-	if e.Code == 0 {
-		return nil
-	}
-	return fmt.Errorf("message [%s] code [%d]", e.Message, e.Code)
+// UACAddRequest is exported
+type UACAddRequest struct {
+	UUID         string
+	Username     string
+	Domain       string
+	AuthUsername string
+	AuthPassword string
+	AuthProxy    string
+	RandomDelay  int
 }
 
-func (p *API) uaclist(ctx context.Context) []User {
+func (a *API) uaclist(ctx context.Context) []User {
 	x := []User{}
 	rlog.Debugf("running uac.reg_dump")
 
@@ -43,7 +53,7 @@ func (p *API) uaclist(ctx context.Context) []User {
 		rlog.Errorf("could not marshal [%s]", err.Error())
 		return x
 	}
-	res, err := p.httpClient.Post(p.jsonrpcHTTPAddr, "application/json", bytes.NewBuffer(b))
+	res, err := a.httpClient.Post(a.jsonrpcHTTPAddr, "application/json", bytes.NewBuffer(b))
 	if err != nil {
 		rlog.Errorf("could not http post [%s]", err.Error())
 		return x
@@ -93,7 +103,7 @@ func (p *API) uaclist(ctx context.Context) []User {
 	return x
 }
 
-func (p *API) uacRemove(ctx context.Context, id string) error {
+func (a *API) uacRemove(ctx context.Context, id string) error {
 	rlog.Debugf("removing registation with uuid [%s]", id)
 	type params struct {
 		UUID string `json:"l_uuid"`
@@ -118,7 +128,7 @@ func (p *API) uacRemove(ctx context.Context, id string) error {
 	if err != nil {
 		return err
 	}
-	res, err := p.httpClient.Post(p.jsonrpcHTTPAddr, "application/json", bytes.NewBuffer(b))
+	res, err := a.httpClient.Post(a.jsonrpcHTTPAddr, "application/json", bytes.NewBuffer(b))
 	if err != nil {
 		return err
 	}
@@ -127,19 +137,14 @@ func (p *API) uacRemove(ctx context.Context, id string) error {
 		return err
 	}
 	defer res.Body.Close()
-	type response struct {
-		JSONRPC string       `json:"jsonrpc"`
-		Error   jsonRPCError `json:"error,omitempty"`
-		ID      string       `json:"id"`
+	if res.StatusCode != http.StatusOK {
+		a.logger.Debug("status code", zap.Int("res.StatusCode", res.StatusCode))
+		return jsonRPCError(x)
 	}
-	z := response{}
-	if err = json.Unmarshal(x, &z); err != nil {
-		return err
-	}
-	return handleError(z.Error)
+	return nil
 }
 
-func (p *API) uacAdd(ctx context.Context, id string, username string, domain string, authUsername string, authPassword string, authProxy string, expires int, regDelay int) error {
+func (a *API) uacAdd(ctx context.Context, id string, username string, domain string, authUsername string, authPassword string, authProxy string, expires int, regDelay int) error {
 	rlog.Debugf("adding registation with uuid [%s]", id)
 	type params struct {
 		UUID         string `json:"l_uuid"`
@@ -187,7 +192,7 @@ func (p *API) uacAdd(ctx context.Context, id string, username string, domain str
 	if err != nil {
 		return err
 	}
-	res, err := p.httpClient.Post(p.jsonrpcHTTPAddr, "application/json", bytes.NewBuffer(b))
+	res, err := a.httpClient.Post(a.jsonrpcHTTPAddr, "application/json", bytes.NewBuffer(b))
 	if err != nil {
 		return err
 	}
@@ -196,14 +201,71 @@ func (p *API) uacAdd(ctx context.Context, id string, username string, domain str
 		return err
 	}
 	defer res.Body.Close()
-	type response struct {
-		JSONRPC string       `json:"jsonrpc"`
-		Error   jsonRPCError `json:"error,omitempty"`
-		ID      string       `json:"id"`
+	if res.StatusCode != http.StatusOK {
+		a.logger.Debug("status code", zap.Int("res.StatusCode", res.StatusCode))
+		return jsonRPCError(x)
 	}
-	z := response{}
-	if err = json.Unmarshal(x, &z); err != nil {
+	return nil
+}
+
+// Register fires register request to kamailio
+func (a *API) Register(ctx context.Context, x UACAddRequest) error {
+	if x.UUID == "" {
+		id := generateUUID(fmt.Sprintf("%s@%s", x.Username, x.Domain))
+		x.UUID = id.String()
+	}
+
+	err := a.uacAdd(ctx, x.UUID, x.Username, x.Domain, x.AuthUsername, x.AuthPassword, x.AuthProxy, 60, x.RandomDelay)
+	if err != nil {
 		return err
 	}
-	return handleError(z.Error)
+	return nil
+}
+
+// Unregister fires unregister request to kamailio
+func (a *API) Unregister(ctx context.Context, uuid string, username string, domain string) error {
+	if uuid == "" {
+		id := generateUUID(fmt.Sprintf("%s@%s", username, domain))
+		uuid = id.String()
+	}
+	err := a.uacRemove(ctx, uuid)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ListRegistrations list registrations
+func (a *API) ListRegistrations(ctx context.Context) []User {
+	return a.uaclist(ctx)
+}
+
+// ListRegistrationsByDomain list registrations filtered by username
+func (a *API) ListRegistrationsByDomain(ctx context.Context, domain string) []User {
+	r := []User{}
+	x := a.uaclist(ctx)
+	for _, v := range x {
+		if v.Domain != domain {
+			continue
+		}
+		r = append(r, v)
+	}
+	return r
+}
+
+// ListRegistrationsByUsername list registrations filtered by username
+func (a *API) ListRegistrationsByUsername(ctx context.Context, id string, username string, domain string) []User {
+	if id == "" {
+		id = generateUUID(fmt.Sprintf("%s@%s", username, domain)).String()
+	}
+	r := []User{}
+	x := a.uaclist(ctx)
+	for _, v := range x {
+		if v.UUID != id {
+			continue
+		}
+		r = append(r, v)
+	}
+	return r
 }
