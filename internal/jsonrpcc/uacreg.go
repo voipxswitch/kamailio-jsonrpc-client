@@ -32,7 +32,7 @@ type UACAddRequest struct {
 	RandomDelay  int
 }
 
-func (a *API) uaclist(ctx context.Context) []User {
+func (a *API) uaclist(ctx context.Context) ([]User, error) {
 	x := []User{}
 	a.logger.Debug("running uac.reg_dump")
 
@@ -49,20 +49,20 @@ func (a *API) uaclist(ctx context.Context) []User {
 	}
 	b, err := json.Marshal(&r)
 	if err != nil {
-		a.logger.Error("could not marshal", zap.Error(err))
-		return x
+		return x, err
 	}
 	res, err := a.httpClient.Post(a.jsonrpcHTTPAddr, "application/json", bytes.NewBuffer(b))
 	if err != nil {
-		a.logger.Error("could not http post", zap.Error(err))
-		return x
+		return x, err
 	}
 	c, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		a.logger.Error("could not read result body", zap.Error(err))
-		return x
+		return x, err
 	}
 	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return x, jsonRPCError(c)
+	}
 	type response struct {
 		JSONRPC string `json:"jsonrpc"`
 		Result  []struct {
@@ -85,8 +85,7 @@ func (a *API) uaclist(ctx context.Context) []User {
 	}
 	z := response{}
 	if err = json.Unmarshal(c, &z); err != nil {
-		a.logger.Error("could not unmarshal", zap.Error(err))
-		return x
+		return x, err
 	}
 	for _, v := range z.Result {
 		j := User{UUID: v.UUID, Username: v.LUsername, Domain: v.LDomain, Expires: v.Expires, RegStatus: "unregistered"}
@@ -99,7 +98,7 @@ func (a *API) uaclist(ctx context.Context) []User {
 		}
 		x = append(x, j)
 	}
-	return x
+	return x, nil
 }
 
 func (a *API) uacRemove(ctx context.Context, id string) error {
@@ -235,13 +234,22 @@ func (a *API) Unregister(ctx context.Context, uuid string, username string, doma
 
 // ListRegistrations list registrations
 func (a *API) ListRegistrations(ctx context.Context) []User {
-	return a.uaclist(ctx)
+	u, err := a.uaclist(ctx)
+	if err != nil {
+		a.logger.Error("could not get uac list", zap.Error(err))
+		return []User{}
+	}
+	return u
 }
 
 // ListRegistrationsByDomain list registrations filtered by username
 func (a *API) ListRegistrationsByDomain(ctx context.Context, domain string) []User {
 	r := []User{}
-	x := a.uaclist(ctx)
+	x, err := a.uaclist(ctx)
+	if err != nil {
+		a.logger.Error("could not get uac list", zap.Error(err))
+		return []User{}
+	}
 	for _, v := range x {
 		if v.Domain != domain {
 			continue
@@ -257,7 +265,11 @@ func (a *API) ListRegistrationsByUsername(ctx context.Context, id string, userna
 		id = generateUUID(fmt.Sprintf("%s@%s", username, domain)).String()
 	}
 	r := []User{}
-	x := a.uaclist(ctx)
+	x, err := a.uaclist(ctx)
+	if err != nil {
+		a.logger.Error("could not get uac list", zap.Error(err))
+		return []User{}
+	}
 	for _, v := range x {
 		if v.UUID != id {
 			continue
