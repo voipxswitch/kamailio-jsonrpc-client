@@ -30,11 +30,11 @@ func New(httpAddr string, l *zap.Logger) (API, error) {
 	return s, nil
 }
 
-func generateUUID(key string) uuid.UUID {
+func generateUUID(key string) string {
 	c := []byte(key)
 	h := sha256.New()
 	h.Write(c)
-	return uuid.NewHash(h, uuid.UUID{}, c, 1)
+	return uuid.NewHash(h, uuid.UUID{}, c, 1).String()
 }
 
 func jsonRPCError(x []byte) error {

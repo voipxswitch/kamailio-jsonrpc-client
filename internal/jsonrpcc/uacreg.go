@@ -14,7 +14,7 @@ import (
 
 // User is exported
 type User struct {
-	UUID      string `json:"uuid"`
+	ID        string `json:"id"`
 	Username  string `json:"username"`
 	Domain    string `json:"domain"`
 	Expires   int    `json:"expires"`
@@ -23,7 +23,7 @@ type User struct {
 
 // UACAddRequest is exported
 type UACAddRequest struct {
-	UUID         string
+	ID           string
 	Username     string
 	Domain       string
 	AuthUsername string
@@ -66,7 +66,7 @@ func (a *API) uaclist(ctx context.Context) ([]User, error) {
 	type response struct {
 		JSONRPC string `json:"jsonrpc"`
 		Result  []struct {
-			UUID         string `json:"l_uuid"`
+			ID           string `json:"l_uuid"`
 			LUsername    string `json:"l_username"`
 			LDomain      string `json:"l_domain"`
 			RUsername    string `json:"r_username"`
@@ -88,7 +88,7 @@ func (a *API) uaclist(ctx context.Context) ([]User, error) {
 		return x, err
 	}
 	for _, v := range z.Result {
-		j := User{UUID: v.UUID, Username: v.LUsername, Domain: v.LDomain, Expires: v.Expires, RegStatus: "unregistered"}
+		j := User{ID: v.ID, Username: v.LUsername, Domain: v.LDomain, Expires: v.Expires, RegStatus: "unregistered"}
 		if v.Flags == 20 {
 			j.RegStatus = "registered"
 		} else if v.Flags == 16 {
@@ -103,7 +103,7 @@ func (a *API) uaclist(ctx context.Context) ([]User, error) {
 
 func (a *API) uacRemove(ctx context.Context, id string) error {
 	type params struct {
-		UUID string `json:"l_uuid"`
+		ID string `json:"l_uuid"`
 	}
 
 	type request struct {
@@ -118,7 +118,7 @@ func (a *API) uacRemove(ctx context.Context, id string) error {
 		Method:  "uac.reg_remove",
 		ID:      uuid.New().String(),
 		Params: params{
-			UUID: id,
+			ID: id,
 		},
 	}
 	b, err := json.Marshal(&r)
@@ -143,7 +143,7 @@ func (a *API) uacRemove(ctx context.Context, id string) error {
 
 func (a *API) uacAdd(ctx context.Context, id string, username string, domain string, authUsername string, authPassword string, authProxy string, expires int, regDelay int) error {
 	type params struct {
-		UUID         string `json:"l_uuid"`
+		ID           string `json:"l_uuid"`
 		Username     string `json:"l_username"`
 		LDomain      string `json:"l_domain"`
 		RUsername    string `json:"r_username"`
@@ -171,7 +171,7 @@ func (a *API) uacAdd(ctx context.Context, id string, username string, domain str
 		Method:  "uac.reg_add",
 		ID:      uuid.New().String(),
 		Params: params{
-			UUID:         id,
+			ID:           id,
 			Username:     username,
 			LDomain:      domain,
 			RUsername:    username,
@@ -206,12 +206,11 @@ func (a *API) uacAdd(ctx context.Context, id string, username string, domain str
 
 // Register fires register request to kamailio
 func (a *API) Register(ctx context.Context, x UACAddRequest) error {
-	if x.UUID == "" {
-		id := generateUUID(fmt.Sprintf("%s@%s", x.Username, x.Domain))
-		x.UUID = id.String()
+	if x.ID == "" {
+		x.ID = generateUUID(fmt.Sprintf("%s@%s", x.Username, x.Domain))
 	}
 
-	err := a.uacAdd(ctx, x.UUID, x.Username, x.Domain, x.AuthUsername, x.AuthPassword, x.AuthProxy, 60, x.RandomDelay)
+	err := a.uacAdd(ctx, x.ID, x.Username, x.Domain, x.AuthUsername, x.AuthPassword, x.AuthProxy, 60, x.RandomDelay)
 	if err != nil {
 		return err
 	}
@@ -219,12 +218,11 @@ func (a *API) Register(ctx context.Context, x UACAddRequest) error {
 }
 
 // Unregister fires unregister request to kamailio
-func (a *API) Unregister(ctx context.Context, uuid string, username string, domain string) error {
-	if uuid == "" {
-		id := generateUUID(fmt.Sprintf("%s@%s", username, domain))
-		uuid = id.String()
+func (a *API) Unregister(ctx context.Context, id string, username string, domain string) error {
+	if id == "" {
+		id = generateUUID(fmt.Sprintf("%s@%s", username, domain))
 	}
-	err := a.uacRemove(ctx, uuid)
+	err := a.uacRemove(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -262,7 +260,7 @@ func (a *API) ListRegistrationsByDomain(ctx context.Context, domain string) []Us
 // ListRegistrationsByUsername list registrations filtered by username
 func (a *API) ListRegistrationsByUsername(ctx context.Context, id string, username string, domain string) []User {
 	if id == "" {
-		id = generateUUID(fmt.Sprintf("%s@%s", username, domain)).String()
+		id = generateUUID(fmt.Sprintf("%s@%s", username, domain))
 	}
 	r := []User{}
 	x, err := a.uaclist(ctx)
@@ -271,7 +269,7 @@ func (a *API) ListRegistrationsByUsername(ctx context.Context, id string, userna
 		return []User{}
 	}
 	for _, v := range x {
-		if v.UUID != id {
+		if v.ID != id {
 			continue
 		}
 		r = append(r, v)

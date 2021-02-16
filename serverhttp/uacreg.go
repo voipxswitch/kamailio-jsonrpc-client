@@ -10,7 +10,7 @@ import (
 func (h httpHandler) uacRegister(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	type request struct {
-		UUID         string `json:"uuid"`
+		ID           string `json:"id"`
 		Username     string `json:"username"`
 		Domain       string `json:"domain"`
 		AuthUsername string `json:"auth_username"`
@@ -25,7 +25,7 @@ func (h httpHandler) uacRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	err = h.jsonrpcAPI.Register(ctx, jsonrpcc.UACAddRequest{
-		UUID:         z.UUID,
+		ID:           z.ID,
 		Username:     z.Username,
 		Domain:       z.Domain,
 		AuthUsername: z.AuthUsername,
@@ -49,24 +49,27 @@ func (h httpHandler) uacUnregister(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode("bad request")
 		return
 	}
-	uuid := ""
-	requestUUID := r.Form["uuid"]
-	if len(requestUUID) != 0 {
-		uuid = requestUUID[0]
+	id := ""
+	requestID, ok := r.URL.Query()["id"]
+	if ok && requestID[0] != "" {
+		id = requestID[0]
 	}
-	username := r.Form["username"]
-	domain := r.Form["domain"]
-	if len(username) == 0 {
+	username := ""
+	requestUser, ok := r.URL.Query()["username"]
+	if ok && requestUser[0] != "" {
+		username = requestUser[0]
+	}
+	domain := ""
+	requestDomain, ok := r.URL.Query()["domain"]
+	if ok && requestDomain[0] != "" {
+		domain = requestDomain[0]
+	}
+	if username == "" || domain == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode("missing username")
+		json.NewEncoder(w).Encode("missing username or domain")
 		return
 	}
-	if len(domain) == 0 {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode("missing domain")
-		return
-	}
-	err = h.jsonrpcAPI.Unregister(ctx, uuid, username[0], domain[0])
+	err = h.jsonrpcAPI.Unregister(ctx, id, username, domain)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -96,9 +99,9 @@ func (h httpHandler) uacList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := ""
-	uuid, ok := r.URL.Query()["uuid"]
-	if ok && uuid[0] != "" {
-		id = uuid[0]
+	requestID, ok := r.URL.Query()["id"]
+	if ok && requestID[0] != "" {
+		id = requestID[0]
 	}
 	x := h.jsonrpcAPI.ListRegistrationsByUsername(ctx, id, username[0], domain[0])
 	json.NewEncoder(w).Encode(x)

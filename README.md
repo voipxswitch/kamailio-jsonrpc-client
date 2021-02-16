@@ -46,7 +46,7 @@ curl http://localhost:8080/v1/htable/mytable?key=mykey
 
 ### uac add registration
 ```
-curl -X POST -d '{"username": "test123", "domain": "testdomain", "auth_username": "user01", "auth_password": "pass01", "proxy": "sip:5.6.6.7;transport=tcp", "random_delay": 10}' http://localhost:8080/v1/uacreg/register
+curl -X POST -d '{"id":"test123","username": "test123", "domain": "testdomain", "auth_username": "user01", "auth_password": "pass01", "proxy": "sip:5.6.6.7;transport=tcp", "random_delay": 10}' http://localhost:8080/v1/uacreg/register
 ```
 
 ### uac remove registration
