@@ -1,29 +1,6 @@
 # kamailio-jsonrpc-client
 
-### uac add registration
-```
-curl -X POST -d '{"username": "test123", "domain": "testdomain", "auth_username": "user01", "auth_password": "pass01", "proxy": "sip:5.6.6.7;transport=tcp", "random_delay": 10}' http://localhost:8080/v1/uac/register
-```
-
-### uac remove registration
-```
-curl -X POST 'http://localhost:8080/v1/uac/unregister?domain=testdomain&username=test123'
-```
-
-### uac list by all
-```
-curl http://localhost:8080/v1/uac/list
-```
-
-### uac list by domain
-```
-curl 'http://localhost:8080/v1/uac/list?domain=testdomain'
-```
-
-### uac list by user
-```
-curl 'http://localhost:8080/v1/uac/list?domain=testdomain&username=test123'
-```
+`kamailio-jsonrpc-client` is a lightweight wrapper around kamailio's jsonrpcs module. It exposes a REST API endpoints which executes jsonrpc requests and returns the results. 
 
 ### kamailio config
 ```
@@ -53,4 +30,41 @@ event_route[xhttp:request] {
     xhttp_reply("404", "OK", "application/javascript", "{\"$var(y)\"}\n\r");
     return;
 }
+```
+
+### htable dump
+
+```
+curl http://localhost:8080/v1/htable/dump?table=mytable
+```
+
+### htable get
+
+```
+curl http://localhost:8080/v1/htable/mytable?key=mykey
+```
+
+### uac add registration
+```
+curl -X POST -d '{"username": "test123", "domain": "testdomain", "auth_username": "user01", "auth_password": "pass01", "proxy": "sip:5.6.6.7;transport=tcp", "random_delay": 10}' http://localhost:8080/v1/uacreg/register
+```
+
+### uac remove registration
+```
+curl -X POST 'http://localhost:8080/v1/uacreg/unregister?domain=testdomain&username=test123'
+```
+
+### uac list by all
+```
+curl http://localhost:8080/v1/uacreg/list
+```
+
+### uac list by domain
+```
+curl 'http://localhost:8080/v1/uacreg/list?domain=testdomain'
+```
+
+### uac list by user
+```
+curl 'http://localhost:8080/v1/uacreg/list?domain=testdomain&username=test123'
 ```
