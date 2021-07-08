@@ -27,7 +27,7 @@ event_route[xhttp:request] {
         jsonrpc_dispatch();
         return;
     }
-    xhttp_reply("404", "OK", "application/javascript", "{\"$var(y)\"}\n\r");
+    xhttp_reply("404", "Not Found", "application/javascript", "{\"$var(y)\"}\n\r");
     return;
 }
 ```
