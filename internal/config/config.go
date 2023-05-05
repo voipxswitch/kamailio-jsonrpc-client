@@ -3,9 +3,9 @@ package config
 import viper "github.com/spf13/viper"
 
 const (
-	logLevel                 = "LOG_LEVEL"
-	httpListenAddrEnvKey     = "HTTP_LISTEN_ADDR"
-	kamailioServerAddrEnvKey = "KAMAILIO_SERVER_ADDR"
+	logLevel                = "LOG_LEVEL"
+	httpListenAddrEnvKey    = "HTTP_LISTEN_ADDR"
+	kamailioServerURLEnvKey = "KAMAILIO_SERVER_URL"
 )
 
 // Config is exported
@@ -17,7 +17,7 @@ type Config struct {
 	Kamailio       struct {
 		JSONRPC struct {
 			Server struct {
-				Addr string
+				URL string
 			}
 		}
 		HTable struct {
@@ -37,9 +37,9 @@ func LoadConfig() Config {
 	viper.BindEnv(httpListenAddrEnvKey)
 	c.HTTPListenAddr = viper.GetString(httpListenAddrEnvKey)
 
-	viper.SetDefault(kamailioServerAddrEnvKey, "localhost:8081")
-	viper.BindEnv(kamailioServerAddrEnvKey)
-	c.Kamailio.JSONRPC.Server.Addr = viper.GetString(kamailioServerAddrEnvKey)
+	viper.SetDefault(kamailioServerURLEnvKey, "http://localhost:8081/RPC")
+	viper.BindEnv(kamailioServerURLEnvKey)
+	c.Kamailio.JSONRPC.Server.URL = viper.GetString(kamailioServerURLEnvKey)
 
 	return c
 }

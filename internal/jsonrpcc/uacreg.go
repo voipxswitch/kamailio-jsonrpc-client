@@ -146,7 +146,7 @@ func (a *API) uacRemove(ctx context.Context, id string) error {
 	}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
-		a.logger.Debug("status code", zap.Int("res.StatusCode", res.StatusCode))
+		a.logger.Debug("unexpected status code", zap.Int("status code", res.StatusCode))
 		return jsonRPCError(x)
 	}
 	return nil
@@ -216,7 +216,7 @@ func (a *API) uacAdd(ctx context.Context, id string, username string, domain str
 	}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
-		a.logger.Debug("status code", zap.Int("res.StatusCode", res.StatusCode))
+		a.logger.Debug("unexpected status code", zap.Int("status code", res.StatusCode))
 		return jsonRPCError(x)
 	}
 	return nil

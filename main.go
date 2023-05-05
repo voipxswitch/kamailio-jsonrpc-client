@@ -14,12 +14,11 @@ func main() {
 	logger := log.New(c.Log.Level)
 	logger.Debug("debug enabled")
 
-	j, err := jsonrpcc.New(c.Kamailio.JSONRPC.Server.Addr, logger)
+	j, err := jsonrpcc.New(c.Kamailio.JSONRPC.Server.URL, logger)
 	if err != nil {
 		logger.Fatal("could not setup jsonrpcc", zap.Error(err))
 	}
 
-	// setup http server
 	err = serverhttp.ListenAndServe(c.HTTPListenAddr, j, logger)
 	if err != nil {
 		logger.Fatal("could not setup http server", zap.Error(err))

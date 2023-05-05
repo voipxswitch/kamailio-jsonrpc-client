@@ -61,7 +61,7 @@ func (a *API) htableDump(ctx context.Context, tableName string) ([]HTableDumpRes
 	}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
-		a.logger.Debug("status code", zap.Int("res.StatusCode", res.StatusCode))
+		a.logger.Debug("unexpected status code", zap.Int("status code", res.StatusCode))
 		return []HTableDumpResult{}, jsonRPCError(x)
 	}
 	type response struct {
@@ -126,7 +126,7 @@ func (a *API) HTableSets(ctx context.Context, tableName string, key string, valu
 	}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
-		a.logger.Debug("status code", zap.Int("res.StatusCode", res.StatusCode))
+		a.logger.Debug("unexpected status code", zap.Int("status code", res.StatusCode))
 		return jsonRPCError(x)
 	}
 	return nil
@@ -173,7 +173,7 @@ func (a *API) HTableGet(ctx context.Context, tableName string, key string) (stri
 	}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
-		a.logger.Debug("status code", zap.Int("res.StatusCode", res.StatusCode))
+		a.logger.Debug("unexpected status code", zap.Int("status code", res.StatusCode))
 		return "", jsonRPCError(x)
 	}
 	type response struct {
@@ -236,7 +236,7 @@ func (a *API) htableFlush(ctx context.Context, tableName string) error {
 	}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
-		a.logger.Debug("status code", zap.Int("res.StatusCode", res.StatusCode))
+		a.logger.Debug("unexpected status code", zap.Int("status code", res.StatusCode))
 		return jsonRPCError(x)
 	}
 	type response struct {
@@ -303,7 +303,7 @@ func (a *API) htableDelete(ctx context.Context, tableName string, key string) er
 		return nil
 	}
 	if res.StatusCode != http.StatusOK {
-		a.logger.Debug("status code", zap.Int("res.StatusCode", res.StatusCode))
+		a.logger.Debug("unexpected status code", zap.Int("status code", res.StatusCode))
 		return jsonRPCError(x)
 	}
 	return nil

@@ -21,7 +21,6 @@ type httpHandler struct {
 
 func ListenAndServe(listenAddr string, jsonrpcAPI jsonrpcc.API, logger *zap.Logger) error {
 	root := goji.NewMux()
-	// setup http mux
 	v := goji.SubMux()
 	h := httpHandler{
 		listenAddr: listenAddr,
@@ -45,5 +44,11 @@ func ListenAndServe(listenAddr string, jsonrpcAPI jsonrpcc.API, logger *zap.Logg
 	v.HandleFunc(pat.Delete("/htable/:table/:key"), h.htableDelete)
 	// DELETE /v1/htable/mytable?name_contains=mykey&value_contains=myvalue returns 204
 	v.HandleFunc(pat.Delete("/htable/:table"), h.htableDeleteQuery)
+	// GET /v1/dispatcher/list?rmode=short returns 200
+	v.HandleFunc(pat.Get("/dispatcher/list"), h.dispatcherList)
+	// POST /v1/dispatcher/[group]?addr=sip:10.0.0.1:5060 returns 204
+	v.HandleFunc(pat.Post("/dispatcher/:group"), h.dispatcherAdd)
+	// DELETE /v1/dispatcher/[group]?addr=sip:10.0.0.1:5060 returns 204
+	v.HandleFunc(pat.Delete("/dispatcher/:group"), h.dispatcherRemove)
 	return http.ListenAndServe(listenAddr, root)
 }

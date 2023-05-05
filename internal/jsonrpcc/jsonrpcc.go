@@ -17,9 +17,9 @@ type API struct {
 	logger          *zap.Logger
 }
 
-func New(httpAddr string, l *zap.Logger) (API, error) {
+func New(httpURL string, l *zap.Logger) (API, error) {
 	s := API{
-		jsonrpcHTTPAddr: fmt.Sprintf("http://%s/RPC", httpAddr),
+		jsonrpcHTTPAddr: httpURL,
 		logger:          l,
 	}
 	s.httpClient = &http.Client{
