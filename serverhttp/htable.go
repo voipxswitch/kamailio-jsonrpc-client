@@ -83,6 +83,16 @@ func (h httpHandler) htablePost(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	if action == "set" {
+		key := r.FormValue("key")
+		value := r.FormValue("value")
+		err := h.jsonrpcAPI.HTableSets(ctx, table, key, value)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(err.Error())
+			return
+		}
+	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
