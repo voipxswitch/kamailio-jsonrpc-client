@@ -1,9 +1,10 @@
 # kamailio-jsonrpc-client
 
-`kamailio-jsonrpc-client` is a lightweight wrapper around kamailio's jsonrpcs module. It exposes a REST API endpoints which executes jsonrpc requests and returns the results. 
+`kamailio-jsonrpc-client` is a lightweight wrapper around kamailio's jsonrpcs module. It exposes a REST API endpoints which executes jsonrpc requests and returns the results.
 
-### kamailio config
-```
+## kamailio config
+
+```kamailio
 #!substdef "!HTTP_PORT!8081!g"
 
 tcp_accept_no_cl=yes
@@ -34,50 +35,54 @@ event_route[xhttp:request] {
 
 ### htable dump
 
-```
+```bash
 curl http://localhost:8080/v1/htable/dump?table=mytable
 ```
 
 ### htable flush
 
-```
+```bash
 curl -X POST 'http://localhost:8080/v1/htable/mytable?action=flush'
 ```
 
 ### htable delete
 
-```
+```bash
 curl -X DELETE 'http://localhost:8080/v1/htable/mytable/mykey'
 ```
 
-
 ### htable get
 
-```
+```bash
 curl http://localhost:8080/v1/htable/mytable?key=mykey
 ```
 
 ### uac add registration
-```
+
+```bash
 curl -X POST -d '{"id":"test123","username": "test123", "domain": "testdomain", "auth_username": "user01", "auth_password": "pass01", "proxy": "sip:5.6.6.7;transport=tcp", "random_delay": 10}' http://localhost:8080/v1/uacreg/register
 ```
 
 ### uac remove registration
-```
+
+```bash
 curl -X POST 'http://localhost:8080/v1/uacreg/unregister?domain=testdomain&username=test123'
 ```
 
 ### uac list by all
-```
+
+```bash
 curl http://localhost:8080/v1/uacreg/list
 ```
 
 ### uac list by domain
-```
+
+```bash
 curl 'http://localhost:8080/v1/uacreg/list?domain=testdomain'
 ```
 
 ### uac list by user
-```
+
+```bash
 curl 'http://localhost:8080/v1/uacreg/list?domain=testdomain&username=test123'
 ```
