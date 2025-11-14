@@ -63,13 +63,13 @@ func (a *API) dispatcherList(ctx context.Context, rmode string) (DispatcherListR
 	if err != nil {
 		return DispatcherListResult{}, err
 	}
-	x, err := io.ReadAll(res.Body)
-	if err != nil {
-		return DispatcherListResult{}, err
-	}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
 		a.logger.Debug("status code", zap.Int("res.StatusCode", res.StatusCode))
+		x, err := io.ReadAll(res.Body)
+		if err != nil {
+			return DispatcherListResult{}, err
+		}
 		return DispatcherListResult{}, jsonRPCError(x)
 	}
 	type response struct {
@@ -78,7 +78,7 @@ func (a *API) dispatcherList(ctx context.Context, rmode string) (DispatcherListR
 		ID      string               `json:"id"`
 	}
 	z := response{}
-	if err = json.Unmarshal(x, &z); err != nil {
+	if err = json.NewDecoder(res.Body).Decode(&z); err != nil {
 		return DispatcherListResult{}, err
 	}
 	return z.Result, nil
@@ -129,13 +129,13 @@ func (a *API) DispatcherAdd(ctx context.Context, group string, addr string, flag
 	if err != nil {
 		return err
 	}
-	x, err := io.ReadAll(res.Body)
-	if err != nil {
-		return err
-	}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
 		a.logger.Debug("unexpected status code", zap.Int("status code", res.StatusCode))
+		x, err := io.ReadAll(res.Body)
+		if err != nil {
+			return err
+		}
 		return jsonRPCError(x)
 	}
 	return nil
@@ -176,13 +176,13 @@ func (a *API) DispatcherRemove(ctx context.Context, group string, addr string) e
 	if err != nil {
 		return err
 	}
-	x, err := io.ReadAll(res.Body)
-	if err != nil {
-		return err
-	}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
 		a.logger.Debug("unexpected status code", zap.Int("status code", res.StatusCode))
+		x, err := io.ReadAll(res.Body)
+		if err != nil {
+			return err
+		}
 		return jsonRPCError(x)
 	}
 	return nil

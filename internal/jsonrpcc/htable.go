@@ -12,14 +12,57 @@ import (
 	"go.uber.org/zap"
 )
 
+type htableSlot struct {
+	Name  string
+	Value string
+	Type  string
+}
+
+func (s *htableSlot) UnmarshalJSON(b []byte) error {
+	var raw struct {
+		Name  string          `json:"name"`
+		Value json.RawMessage `json:"value"`
+		Type  string          `json:"type"`
+	}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	s.Name = raw.Name
+	s.Type = raw.Type
+	s.Value = ""
+	switch raw.Type {
+	case "str":
+		var v string
+		if err := json.Unmarshal(raw.Value, &v); err != nil {
+			return err
+		}
+		s.Value = v
+	case "int":
+		var num json.Number
+		if err := json.Unmarshal(raw.Value, &num); err != nil {
+			return err
+		}
+		s.Value = num.String()
+	default:
+		var v string
+		if err := json.Unmarshal(raw.Value, &v); err == nil {
+			s.Value = v
+			break
+		}
+		var num json.Number
+		if err := json.Unmarshal(raw.Value, &num); err == nil {
+			s.Value = num.String()
+			break
+		}
+		s.Value = string(raw.Value)
+	}
+	return nil
+}
+
 type HTableDumpResult struct {
-	Entry int64 `json:"entry"`
-	Size  int64 `json:"size"`
-	Slot  []struct {
-		Name  string `json:"name"`
-		Value string `json:"value"`
-		Type  string `json:"type"`
-	} `json:"slot"`
+	Entry int64        `json:"entry"`
+	Size  int64        `json:"size"`
+	Slot  []htableSlot `json:"slot"`
 }
 
 func (a *API) htableDump(ctx context.Context, tableName string) ([]HTableDumpResult, error) {
@@ -55,13 +98,13 @@ func (a *API) htableDump(ctx context.Context, tableName string) ([]HTableDumpRes
 	if err != nil {
 		return []HTableDumpResult{}, err
 	}
-	x, err := io.ReadAll(res.Body)
-	if err != nil {
-		return []HTableDumpResult{}, err
-	}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
 		a.logger.Debug("unexpected status code", zap.Int("status code", res.StatusCode))
+		x, err := io.ReadAll(res.Body)
+		if err != nil {
+			return []HTableDumpResult{}, err
+		}
 		return []HTableDumpResult{}, jsonRPCError(x)
 	}
 	type response struct {
@@ -70,7 +113,7 @@ func (a *API) htableDump(ctx context.Context, tableName string) ([]HTableDumpRes
 		ID      string             `json:"id"`
 	}
 	z := response{}
-	if err = json.Unmarshal(x, &z); err != nil {
+	if err = json.NewDecoder(res.Body).Decode(&z); err != nil {
 		return []HTableDumpResult{}, err
 	}
 	if len(z.Result) == 0 {
@@ -120,13 +163,13 @@ func (a *API) HTableSets(ctx context.Context, tableName string, key string, valu
 	if err != nil {
 		return err
 	}
-	x, err := io.ReadAll(res.Body)
-	if err != nil {
-		return err
-	}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
 		a.logger.Debug("unexpected status code", zap.Int("status code", res.StatusCode))
+		x, err := io.ReadAll(res.Body)
+		if err != nil {
+			return err
+		}
 		return jsonRPCError(x)
 	}
 	return nil
@@ -167,13 +210,13 @@ func (a *API) HTableGet(ctx context.Context, tableName string, key string) (stri
 	if err != nil {
 		return "", err
 	}
-	x, err := io.ReadAll(res.Body)
-	if err != nil {
-		return "", err
-	}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
 		a.logger.Debug("unexpected status code", zap.Int("status code", res.StatusCode))
+		x, err := io.ReadAll(res.Body)
+		if err != nil {
+			return "", err
+		}
 		return "", jsonRPCError(x)
 	}
 	type response struct {
@@ -191,7 +234,7 @@ func (a *API) HTableGet(ctx context.Context, tableName string, key string) (stri
 		ID string `json:"id"`
 	}
 	z := response{}
-	if err = json.Unmarshal(x, &z); err != nil {
+	if err = json.NewDecoder(res.Body).Decode(&z); err != nil {
 		return "", err
 	}
 	return z.Result.Item.Value, nil
@@ -230,13 +273,13 @@ func (a *API) htableFlush(ctx context.Context, tableName string) error {
 	if err != nil {
 		return err
 	}
-	x, err := io.ReadAll(res.Body)
-	if err != nil {
-		return err
-	}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
 		a.logger.Debug("unexpected status code", zap.Int("status code", res.StatusCode))
+		x, err := io.ReadAll(res.Body)
+		if err != nil {
+			return err
+		}
 		return jsonRPCError(x)
 	}
 	type response struct {
@@ -245,7 +288,7 @@ func (a *API) htableFlush(ctx context.Context, tableName string) error {
 		ID      string `json:"id"`
 	}
 	z := response{}
-	if err = json.Unmarshal(x, &z); err != nil {
+	if err = json.NewDecoder(res.Body).Decode(&z); err != nil {
 		return err
 	}
 	if len(z.Result) == 0 {
@@ -293,10 +336,6 @@ func (a *API) htableDelete(ctx context.Context, tableName string, key string) er
 	if err != nil {
 		return err
 	}
-	x, err := io.ReadAll(res.Body)
-	if err != nil {
-		return err
-	}
 	defer res.Body.Close()
 	if res.StatusCode == http.StatusNotFound {
 		a.logger.Debug("key not found")
@@ -304,6 +343,10 @@ func (a *API) htableDelete(ctx context.Context, tableName string, key string) er
 	}
 	if res.StatusCode != http.StatusOK {
 		a.logger.Debug("unexpected status code", zap.Int("status code", res.StatusCode))
+		x, err := io.ReadAll(res.Body)
+		if err != nil {
+			return err
+		}
 		return jsonRPCError(x)
 	}
 	return nil

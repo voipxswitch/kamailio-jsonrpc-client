@@ -59,12 +59,12 @@ func (a *API) uaclist(ctx context.Context) ([]User, error) {
 	if err != nil {
 		return x, err
 	}
-	c, err := io.ReadAll(res.Body)
-	if err != nil {
-		return x, err
-	}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
+		c, err := io.ReadAll(res.Body)
+		if err != nil {
+			return x, err
+		}
 		return x, jsonRPCError(c)
 	}
 	type response struct {
@@ -89,7 +89,7 @@ func (a *API) uaclist(ctx context.Context) ([]User, error) {
 		ID string `json:"id"`
 	}
 	z := response{}
-	if err = json.Unmarshal(c, &z); err != nil {
+	if err = json.NewDecoder(res.Body).Decode(&z); err != nil {
 		return x, err
 	}
 	for _, v := range z.Result {
@@ -140,13 +140,13 @@ func (a *API) uacRemove(ctx context.Context, id string) error {
 	if err != nil {
 		return err
 	}
-	x, err := io.ReadAll(res.Body)
-	if err != nil {
-		return err
-	}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
 		a.logger.Debug("unexpected status code", zap.Int("status code", res.StatusCode))
+		x, err := io.ReadAll(res.Body)
+		if err != nil {
+			return err
+		}
 		return jsonRPCError(x)
 	}
 	return nil
@@ -210,13 +210,13 @@ func (a *API) uacAdd(ctx context.Context, id string, username string, domain str
 	if err != nil {
 		return err
 	}
-	x, err := io.ReadAll(res.Body)
-	if err != nil {
-		return err
-	}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
 		a.logger.Debug("unexpected status code", zap.Int("status code", res.StatusCode))
+		x, err := io.ReadAll(res.Body)
+		if err != nil {
+			return err
+		}
 		return jsonRPCError(x)
 	}
 	return nil

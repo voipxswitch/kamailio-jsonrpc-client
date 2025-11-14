@@ -23,7 +23,7 @@ func New(httpURL string, l *zap.Logger) (API, error) {
 		logger:          l,
 	}
 	s.httpClient = &http.Client{
-		Timeout: 5 * time.Second,
+		Timeout: 60 * time.Second,
 	}
 	return s, nil
 }
