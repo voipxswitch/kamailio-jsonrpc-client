@@ -127,6 +127,23 @@ func (h httpHandler) htableDeleteQuery(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode("missing table")
 		return
 	}
+	keyStartsWith := r.FormValue("key_starts_with")
+	if keyStartsWith != "" {
+		deleted, err := h.jsonrpcAPI.HTableDeleteKeyPrefix(ctx, table, keyStartsWith)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(err.Error())
+			return
+		}
+		if !deleted {
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode("no matching keys")
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
 	keyContains := r.FormValue("key_contains")
 	valueContains := r.FormValue("value_contains")
 	if keyContains == "" && valueContains == "" {

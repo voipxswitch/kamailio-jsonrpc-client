@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/google/uuid"
@@ -354,6 +356,66 @@ func (a *API) htableDelete(ctx context.Context, tableName string, key string) er
 
 func (a *API) HTableDelete(ctx context.Context, tableName string, key string) error {
 	return a.htableDelete(ctx, tableName, key)
+}
+
+func (a *API) HTableDeleteKeyPrefix(ctx context.Context, tableName string, keyPrefix string) (bool, error) {
+	a.logger.Debug(
+		"htable delete key prefix",
+		zap.String("table name", tableName),
+		zap.String("key prefix", keyPrefix),
+	)
+	payload := struct {
+		TableName string `json:"htable"`
+		KeyPrefix string `json:"key_starts_with"`
+	}{
+		TableName: tableName,
+		KeyPrefix: keyPrefix,
+	}
+	body, err := json.Marshal(&payload)
+	if err != nil {
+		return false, fmt.Errorf("marshal htable prefix delete request: %w", err)
+	}
+	prefixDeleteURL, err := url.Parse(a.jsonrpcHTTPAddr)
+	if err != nil {
+		return false, fmt.Errorf("parse Kamailio server URL: %w", err)
+	}
+	prefixDeleteURL.Path = "/htable/delete-prefix"
+	prefixDeleteURL.RawPath = ""
+	prefixDeleteURL.RawQuery = ""
+	prefixDeleteURL.Fragment = ""
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		prefixDeleteURL.String(),
+		bytes.NewBuffer(body),
+	)
+	if err != nil {
+		return false, fmt.Errorf("create htable prefix delete request: %w", err)
+	}
+	req.Close = true
+	req.Header.Set("Content-Type", "application/json")
+	res, err := a.httpClient.Do(req)
+	if err != nil {
+		return false, fmt.Errorf("send htable prefix delete request: %w", err)
+	}
+	defer res.Body.Close()
+
+	switch res.StatusCode {
+	case http.StatusNoContent:
+		return true, nil
+	case http.StatusNotFound:
+		return false, nil
+	default:
+		responseBody, readErr := io.ReadAll(res.Body)
+		if readErr != nil {
+			return false, fmt.Errorf("read htable prefix delete response: %w", readErr)
+		}
+		return false, fmt.Errorf(
+			"unexpected htable prefix delete status code %d: %s",
+			res.StatusCode,
+			strings.TrimSpace(string(responseBody)),
+		)
+	}
 }
 
 func htableResultQueryKeyContains(ctx context.Context, h HTableDumpResult, value string) bool {

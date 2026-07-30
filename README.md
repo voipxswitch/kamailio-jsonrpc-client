@@ -12,6 +12,7 @@ listen=tcp:127.0.0.1:HTTP_PORT
 
 loadmodule "xhttp.so"
 loadmodule "jsonrpcs.so"
+loadmodule "jansson.so"
 
 modparam("jsonrpcs", "transport", 1)
 
@@ -26,6 +27,33 @@ event_route[xhttp:request] {
     if ($hu =~ "^/RPC") {
         xlog("L_INFO", "jsonrpc dispatch [$hu] [$var(x)]");
         jsonrpc_dispatch();
+        return;
+    }
+    if ($var(x) == "/htable/delete-prefix") {
+        if ($rm != "POST") {
+            xhttp_reply("405", "Method Not Allowed", "application/json", "");
+            return;
+        }
+        $var(htable) = $null;
+        $var(key_prefix) = $null;
+        if (!jansson_get("htable", "$rb", "$var(htable)")
+                || !jansson_get("key_starts_with", "$rb", "$var(key_prefix)")
+                || $var(htable) == $null
+                || $var(key_prefix) == $null
+                || $var(htable) == ""
+                || $var(key_prefix) == "") {
+            xhttp_reply("400", "Bad Request", "application/json", "");
+            return;
+        }
+        if (!sht_has_name("$var(htable)", "sw", "$var(key_prefix)")) {
+            xhttp_reply("404", "Not Found", "application/json", "");
+            return;
+        }
+        if (!sht_rm_name("$var(htable)", "sw", "$var(key_prefix)")) {
+            xhttp_reply("500", "Internal Server Error", "application/json", "");
+            return;
+        }
+        xhttp_reply("204", "No Content", "", "");
         return;
     }
     xhttp_reply("404", "Not Found", "application/javascript", "{\"$var(y)\"}\n\r");
@@ -49,6 +77,12 @@ curl -X POST 'http://localhost:8080/v1/htable/mytable?action=flush'
 
 ```bash
 curl -X DELETE 'http://localhost:8080/v1/htable/mytable/mykey'
+```
+
+### htable delete by key prefix
+
+```bash
+curl -X DELETE 'http://localhost:8080/v1/htable/mytable?key_starts_with=mykey'
 ```
 
 ### htable get
